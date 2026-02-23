@@ -4,6 +4,7 @@ Smart ML-powered excess food rescue routing system built from the PDF requiremen
 
 ## Implemented Workflow
 
+
 1. Provider creates a live rescue request with surplus details and cause tag.
 2. Backend filters NGOs by geo radius (Haversine distance).
 3. ML feature builder creates pre-decision features (no leakage).
