@@ -142,3 +142,44 @@ class AcceptResponse {
     );
   }
 }
+
+class NgoJobModel {
+  final int rescueId;
+  final int wave;
+  final String notifiedAt;
+  final String responseStatus;
+  final double? responseMinutes;
+  final String rescueStatus;
+  final int mealsAvailable;
+  final String foodType;
+  final String eventType;
+  final String providerName;
+
+  NgoJobModel({
+    required this.rescueId,
+    required this.wave,
+    required this.notifiedAt,
+    required this.responseStatus,
+    required this.responseMinutes,
+    required this.rescueStatus,
+    required this.mealsAvailable,
+    required this.foodType,
+    required this.eventType,
+    required this.providerName,
+  });
+
+  factory NgoJobModel.fromJson(Map<String, dynamic> json) {
+    return NgoJobModel(
+      rescueId: (json['rescue_id'] as num?)?.toInt() ?? 0,
+      wave: (json['wave'] as num?)?.toInt() ?? 1,
+      notifiedAt: (json['notified_at'] ?? '').toString(),
+      responseStatus: (json['response_status'] ?? '').toString(),
+      responseMinutes: (json['response_minutes'] as num?)?.toDouble(),
+      rescueStatus: (json['rescue_status'] ?? '').toString(),
+      mealsAvailable: (json['meals_available'] as num?)?.toInt() ?? 0,
+      foodType: (json['food_type'] ?? '').toString(),
+      eventType: (json['event_type'] ?? '').toString(),
+      providerName: (json['provider_name'] ?? '').toString(),
+    );
+  }
+}

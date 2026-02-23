@@ -15,9 +15,10 @@ Smart ML-powered excess food rescue routing system built from the PDF requiremen
    - first 5 NGOs in first 5 minutes,
    - top 10 in next 5 minutes,
    - all thereafter.
+   - each dispatch is persisted as NGO alert jobs.
 7. First NGO to accept locks assignment server-side.
 8. Live pickup status updates (`accepted -> on_the_way -> picked_up -> completed`).
-9. Completion logs are stored for continuous learning.
+9. Accepted + non-selected NGO responses are logged for continuous learning.
 10. Admin can retrain model from logs.
 11. Provider fairness score excludes surplus quantity.
 

@@ -66,6 +66,20 @@ def init_db() -> None:
                 FOREIGN KEY(rescue_id) REFERENCES rescues(id),
                 FOREIGN KEY(ngo_id) REFERENCES ngos(id)
             );
+
+            CREATE TABLE IF NOT EXISTS rescue_alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rescue_id INTEGER NOT NULL,
+                ngo_id INTEGER NOT NULL,
+                wave INTEGER NOT NULL,
+                notified_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                response_status TEXT NOT NULL DEFAULT 'pending',
+                responded_at TEXT,
+                response_minutes REAL,
+                UNIQUE(rescue_id, ngo_id),
+                FOREIGN KEY(rescue_id) REFERENCES rescues(id),
+                FOREIGN KEY(ngo_id) REFERENCES ngos(id)
+            );
             """
         )
 

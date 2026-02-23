@@ -478,7 +478,7 @@ class NgoTab extends StatefulWidget {
 class _NgoTabState extends State<NgoTab> {
   final ApiService _api = ApiService();
 
-  List<RescueModel> _rescues = [];
+  List<NgoJobModel> _jobs = [];
   List<NgoModel> _ngos = [];
   RankingResponse? _ranking;
   int? _selectedRescueId;
@@ -495,20 +495,36 @@ class _NgoTabState extends State<NgoTab> {
   Future<void> _loadData() async {
     setState(() => _loading = true);
     try {
-      final rescues = await _api.listLiveRescues();
       final ngos = await _api.listNgos();
       setState(() {
-        _rescues = rescues;
         _ngos = ngos;
-        _selectedRescueId = rescues.isNotEmpty ? (_selectedRescueId ?? rescues.first.id) : null;
         _selectedNgoId = ngos.isNotEmpty ? (_selectedNgoId ?? ngos.first.id) : null;
       });
+      await _loadJobs();
       await _loadRanking();
     } catch (error) {
       _showError(error);
     } finally {
       setState(() => _loading = false);
     }
+  }
+
+  Future<void> _loadJobs() async {
+    if (_selectedNgoId == null) {
+      setState(() {
+        _jobs = [];
+        _selectedRescueId = null;
+      });
+      return;
+    }
+    final jobs = await _api.listNgoJobs(_selectedNgoId!);
+    setState(() {
+      _jobs = jobs;
+      final jobRescueIds = jobs.map((item) => item.rescueId).toSet();
+      if (_selectedRescueId == null || !jobRescueIds.contains(_selectedRescueId)) {
+        _selectedRescueId = jobs.isNotEmpty ? jobs.first.rescueId : null;
+      }
+    });
   }
 
   Future<void> _loadRanking() async {
@@ -565,20 +581,28 @@ class _NgoTabState extends State<NgoTab> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_rescues.isEmpty) {
+    if (_jobs.isEmpty) {
       return RefreshIndicator(
         onRefresh: _loadData,
         child: ListView(
           children: const [
             SizedBox(height: 250),
-            Center(child: Text('No available rescues at the moment.')),
+            Center(child: Text('No dispatched jobs for this NGO right now.')),
           ],
         ),
       );
     }
 
-    final selectedRescue =
-        _rescues.firstWhere((item) => item.id == _selectedRescueId, orElse: () => _rescues.first);
+    final selectedJob =
+        _jobs.firstWhere((item) => item.rescueId == _selectedRescueId, orElse: () => _jobs.first);
+    final pendingJobs = _jobs.where((item) => item.responseStatus == 'pending').length;
+    final avgResponse = _jobs
+        .where((item) => item.responseMinutes != null)
+        .map((item) => item.responseMinutes!)
+        .toList();
+    final avgResponseLabel = avgResponse.isEmpty
+        ? '-'
+        : '${(avgResponse.reduce((a, b) => a + b) / avgResponse.length).toStringAsFixed(1)}m';
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -591,17 +615,30 @@ class _NgoTabState extends State<NgoTab> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _metricCard('Pending Jobs', _rescues.length.toString(), Icons.warning_amber_outlined),
-              _metricCard('Avg Response', '10m', Icons.timer_outlined),
+              _metricCard('Pending Jobs', pendingJobs.toString(), Icons.warning_amber_outlined),
+              _metricCard('Avg Response', avgResponseLabel, Icons.timer_outlined),
             ],
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
+            initialValue: _selectedNgoId,
+            items: _ngos
+                .map((ngo) => DropdownMenuItem(value: ngo.id, child: Text('${ngo.id} - ${ngo.name}')))
+                .toList(),
+            onChanged: (value) async {
+              setState(() => _selectedNgoId = value);
+              await _loadJobs();
+              await _loadRanking();
+            },
+            decoration: const InputDecoration(labelText: 'Your NGO'),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
             initialValue: _selectedRescueId,
-            items: _rescues
-                .map((rescue) => DropdownMenuItem(
-                      value: rescue.id,
-                      child: Text('#${rescue.id} - ${rescue.foodType} (${rescue.mealsAvailable} meals)'),
+            items: _jobs
+                .map((job) => DropdownMenuItem(
+                      value: job.rescueId,
+                      child: Text('#${job.rescueId} - ${job.foodType} (${job.mealsAvailable} meals)'),
                     ))
                 .toList(),
             onChanged: (value) async {
@@ -613,9 +650,9 @@ class _NgoTabState extends State<NgoTab> {
           const SizedBox(height: 8),
           Card(
             child: ListTile(
-              title: Text(selectedRescue.foodType),
-              subtitle: Text('${selectedRescue.providerName} • ${selectedRescue.mealsAvailable} meals'),
-              trailing: Text(selectedRescue.status.toUpperCase()),
+              title: Text(selectedJob.foodType),
+              subtitle: Text('${selectedJob.providerName} • ${selectedJob.mealsAvailable} meals • Wave ${selectedJob.wave}'),
+              trailing: Text('${selectedJob.responseStatus.toUpperCase()} / ${selectedJob.rescueStatus.toUpperCase()}'),
             ),
           ),
           const SizedBox(height: 8),
@@ -636,15 +673,6 @@ class _NgoTabState extends State<NgoTab> {
                 ),
           ],
           const SizedBox(height: 10),
-          DropdownButtonFormField<int>(
-            initialValue: _selectedNgoId,
-            items: _ngos
-                .map((ngo) => DropdownMenuItem(value: ngo.id, child: Text('${ngo.id} - ${ngo.name}')))
-                .toList(),
-            onChanged: (value) => setState(() => _selectedNgoId = value),
-            decoration: const InputDecoration(labelText: 'Your NGO'),
-          ),
-          const SizedBox(height: 8),
           FilledButton(onPressed: _acceptRescue, child: const Text('Accept This Rescue')),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(

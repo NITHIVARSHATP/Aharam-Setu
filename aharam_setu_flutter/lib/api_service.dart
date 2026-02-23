@@ -44,6 +44,13 @@ class ApiService {
         .toList();
   }
 
+  Future<List<NgoJobModel>> listNgoJobs(int ngoId) async {
+    final data = await _get('/ngos/$ngoId/jobs');
+    return (data as List)
+        .map((item) => NgoJobModel.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<Map<String, dynamic>> createRescue(Map<String, dynamic> payload) async {
     return await _post('/rescues', payload) as Map<String, dynamic>;
   }
