@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+from datetime import datetime
 
 DB_PATH = Path(__file__).resolve().parent.parent / "aharamsetu.db"
 
@@ -9,79 +10,98 @@ def get_conn() -> sqlite3.Connection:
     return conn
 
 def init_db() -> None:
-    with get_conn() as conn:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS providers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                score REAL DEFAULT 0.5
-            );
+    global DB_PATH
+    try:
+        with get_conn() as conn:
+            _init_schema(conn)
+    except sqlite3.DatabaseError:
+        if DB_PATH.exists():
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = DB_PATH.with_name(f"aharamsetu_corrupt_{timestamp}.db")
+            try:
+                DB_PATH.replace(backup_path)
+            except PermissionError:
+                DB_PATH = DB_PATH.with_name(f"aharamsetu_recovered_{timestamp}.db")
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            DB_PATH = DB_PATH.with_name(f"aharamsetu_recovered_{timestamp}.db")
+        with get_conn() as conn:
+            _init_schema(conn)
 
-            CREATE TABLE IF NOT EXISTS ngos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                lat REAL NOT NULL,
-                lng REAL NOT NULL,
-                accept_rate REAL NOT NULL,
-                avg_response_minutes REAL NOT NULL,
-                past_pickups INTEGER NOT NULL,
-                recent_activity_count INTEGER NOT NULL,
-                active INTEGER NOT NULL DEFAULT 1
-            );
 
-            CREATE TABLE IF NOT EXISTS rescues (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                provider_id INTEGER NOT NULL,
-                meals_available INTEGER NOT NULL,
-                food_type TEXT NOT NULL,
-                ready_time TEXT NOT NULL,
-                pickup_deadline TEXT NOT NULL,
-                expiry_time TEXT NOT NULL,
-                lat REAL NOT NULL,
-                lng REAL NOT NULL,
-                event_type TEXT NOT NULL,
-                cause_tag TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                status TEXT NOT NULL DEFAULT 'live',
-                assigned_ngo_id INTEGER,
-                assigned_at TEXT,
-                FOREIGN KEY(provider_id) REFERENCES providers(id),
-                FOREIGN KEY(assigned_ngo_id) REFERENCES ngos(id)
-            );
+def _init_schema(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS providers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            score REAL DEFAULT 0.5
+        );
 
-            CREATE TABLE IF NOT EXISTS rescue_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rescue_id INTEGER NOT NULL,
-                ngo_id INTEGER,
-                accepted INTEGER NOT NULL,
-                response_minutes REAL,
-                pickup_minutes REAL,
-                distance_km REAL,
-                time_band TEXT,
-                day_of_week INTEGER,
-                cause_tag TEXT,
-                expiry_accuracy_score REAL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(rescue_id) REFERENCES rescues(id),
-                FOREIGN KEY(ngo_id) REFERENCES ngos(id)
-            );
+        CREATE TABLE IF NOT EXISTS ngos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            lat REAL NOT NULL,
+            lng REAL NOT NULL,
+            accept_rate REAL NOT NULL,
+            avg_response_minutes REAL NOT NULL,
+            past_pickups INTEGER NOT NULL,
+            recent_activity_count INTEGER NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1
+        );
 
-            CREATE TABLE IF NOT EXISTS rescue_alerts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rescue_id INTEGER NOT NULL,
-                ngo_id INTEGER NOT NULL,
-                wave INTEGER NOT NULL,
-                notified_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                response_status TEXT NOT NULL DEFAULT 'pending',
-                responded_at TEXT,
-                response_minutes REAL,
-                UNIQUE(rescue_id, ngo_id),
-                FOREIGN KEY(rescue_id) REFERENCES rescues(id),
-                FOREIGN KEY(ngo_id) REFERENCES ngos(id)
-            );
-            """
-        )
+        CREATE TABLE IF NOT EXISTS rescues (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider_id INTEGER NOT NULL,
+            meals_available INTEGER NOT NULL,
+            food_type TEXT NOT NULL,
+            ready_time TEXT NOT NULL,
+            pickup_deadline TEXT NOT NULL,
+            expiry_time TEXT NOT NULL,
+            lat REAL NOT NULL,
+            lng REAL NOT NULL,
+            event_type TEXT NOT NULL,
+            cause_tag TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            status TEXT NOT NULL DEFAULT 'live',
+            assigned_ngo_id INTEGER,
+            assigned_at TEXT,
+            FOREIGN KEY(provider_id) REFERENCES providers(id),
+            FOREIGN KEY(assigned_ngo_id) REFERENCES ngos(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rescue_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            rescue_id INTEGER NOT NULL,
+            ngo_id INTEGER,
+            accepted INTEGER NOT NULL,
+            response_minutes REAL,
+            pickup_minutes REAL,
+            distance_km REAL,
+            time_band TEXT,
+            day_of_week INTEGER,
+            cause_tag TEXT,
+            expiry_accuracy_score REAL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(rescue_id) REFERENCES rescues(id),
+            FOREIGN KEY(ngo_id) REFERENCES ngos(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rescue_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            rescue_id INTEGER NOT NULL,
+            ngo_id INTEGER NOT NULL,
+            wave INTEGER NOT NULL,
+            notified_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            response_status TEXT NOT NULL DEFAULT 'pending',
+            responded_at TEXT,
+            response_minutes REAL,
+            UNIQUE(rescue_id, ngo_id),
+            FOREIGN KEY(rescue_id) REFERENCES rescues(id),
+            FOREIGN KEY(ngo_id) REFERENCES ngos(id)
+        );
+        """
+    )
 
 
 def seed_data() -> None:
