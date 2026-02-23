@@ -10,6 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 MODEL_PATH = Path(__file__).resolve().parent.parent / "model.pkl"
 
+
 FEATURE_COLUMNS = [
     "distance_km",
     "time_of_day",

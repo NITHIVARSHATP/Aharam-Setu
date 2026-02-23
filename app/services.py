@@ -5,7 +5,6 @@ from math import asin, cos, radians, sin, sqrt
 
 from .ml import NGOFeatureRow, predict_acceptance
 
-
 def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     r = 6371.0
     dlat = radians(lat2 - lat1)

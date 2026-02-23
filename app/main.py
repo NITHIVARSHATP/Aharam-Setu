@@ -5,6 +5,7 @@ from datetime import datetime
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 
+
 from .database import get_conn, init_db, seed_data
 from .ml import retrain_from_frame, train_initial_model
 from .schemas import (

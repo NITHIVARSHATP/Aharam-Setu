@@ -11,6 +11,7 @@ CauseTag = Literal[
     "unknown",
 ]
 
+
 RescueStatus = Literal["live", "assigned", "accepted", "on_the_way", "picked_up", "completed", "closed"]
 
 PickupStatus = Literal["accepted", "on_the_way", "picked_up", "completed"]
