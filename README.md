@@ -1,4 +1,4 @@
-# Aharam Setu (Pattinathil-Pasi)
+# Aharam Setu
 
 Smart ML-powered excess food rescue routing system built from the PDF requirements.
 
@@ -22,7 +22,7 @@ Smart ML-powered excess food rescue routing system built from the PDF requiremen
 
 ## Tech Stack
 
-- Frontend: Streamlit (`dashboard.py`) with Provider / NGO / Admin panels
+- Frontend: Flutter (`aharam_setu_flutter`) with Provider / NGO / Admin tabs
 - Backend: FastAPI (`app/main.py`)
 - ML: scikit-learn RandomForest (`app/ml.py`)
 - DB: SQLite (local file `aharamsetu.db`, replaceable with PostgreSQL)
@@ -34,7 +34,7 @@ Smart ML-powered excess food rescue routing system built from the PDF requiremen
 - `app/services.py` - Haversine distance, NGO ranking, wave logic
 - `app/database.py` - SQLite initialization and seeding
 - `app/schemas.py` - Pydantic models
-- `dashboard.py` - Streamlit UI with Provider / NGO / Admin tabs
+- `aharam_setu_flutter/` - Flutter mobile app with Provider / NGO / Admin tabs
 - `aharamsetu.db` - Auto-created SQLite database
 - `model.pkl` - Auto-trained model on startup
 
@@ -49,27 +49,30 @@ cd "c:\Users\NITHISHVARAN T P\OneDrive\Pictures\Screenshots\filez\sem 6\innov"
 
 Backend will listen on `http://127.0.0.1:8000`. Visit `http://127.0.0.1:8000/docs` for Swagger API docs.
 
-**Terminal 2 – Start Streamlit dashboard:**
+**Terminal 2 – Start Flutter app:**
 
 ```powershell
-cd "c:\Users\NITHISHVARAN T P\OneDrive\Pictures\Screenshots\filez\sem 6\innov"
-"C:/Users/NITHISHVARAN T P/AppData/Local/Programs/Python/Python313/python.exe" -m streamlit run dashboard.py
+cd "c:\Users\NITHISHVARAN T P\OneDrive\Pictures\Screenshots\filez\sem 6\innov\repo\Aharam-Setu\aharam_setu_flutter"
+flutter pub get
+flutter run
 ```
 
-Dashboard will open on `http://localhost:8501`.
+> API base URL defaults to:
+> - Android emulator: `http://10.0.2.2:8000`
+> - iOS/Desktop: `http://127.0.0.1:8000`
 
 ## Usage
 
-### Provider Dashboard
+### Provider Tab
 1. Create a rescue request with meals, location, expiry time, and cause tag.
 2. View all live rescues and their ranked NGOs per alert wave.
 
-### NGO Dashboard
+### NGO Tab
 1. See rescue jobs available for your organization.
 2. Accept a job (first acceptance locks assignment server-side).
 3. Update pickup status: `accepted → on_the_way → picked_up → completed`.
 
-### Admin Panel
+### Admin Tab
 1. View provider fairness scores (excludes surplus quantity).
 2. Retrain ML model from historical logs.
 3. See registered NGOs and their reliability metrics.
