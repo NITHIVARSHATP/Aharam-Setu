@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 
 from .database import get_conn, init_db, seed_data
@@ -19,6 +20,13 @@ from .schemas import (
 from .services import haversine_km, rank_ngos_for_rescue
 
 app = FastAPI(title="Aharam Setu API", version="1.0.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
