@@ -11,92 +11,239 @@ from core import init_session_state, train_model
 st.set_page_config(page_title="Admin Panel", layout="wide")
 init_session_state()
 
-st.title("🛠️ Admin - Model Retraining & Logs")
-st.caption("Monitor system health, retrain ML model, and review rescue history.")
+# Custom CSS
+st.markdown("""
+<style>
+    /* Overall page background */
+    .stApp {
+        background-color: #f8f9fa !important;
+        color: #1a1a1a !important;
+    }
+    
+    [data-testid="stAppViewContainer"] {
+        background-color: #f8f9fa !important;
+    }
+    
+    [data-testid="stSidebar"] {
+        background-color: #ffffff !important;
+    }
+    
+    /* Ensure all text is visible */
+    body, h1, h2, h3, h4, h5, h6, p, span, label, div {
+        color: #1a1a1a !important;
+    }
+    
+    /* Input field styling */
+    input, textarea, select {
+        background-color: #ffffff !important;
+        color: #1a1a1a !important;
+        border: 2px solid #d0d0d0 !important;
+        border-radius: 0.5rem !important;
+    }
+    
+    input::placeholder {
+        color: #999 !important;
+    }
+    
+    /* Selectbox and other inputs */
+    [data-testid="stSelectbox"] input,
+    [data-testid="stNumberInput"] input,
+    [data-testid="stTextInput"] input,
+    [data-testid="stTimeInput"] input {
+        background-color: #ffffff !important;
+        color: #1a1a1a !important;
+        border: 2px solid #d0d0d0 !important;
+    }
+    
+    /* Dropdown menu and options */
+    [data-testid="stPopover"],
+    [role="listbox"],
+    [role="option"] {
+        background-color: #ffffff !important;
+        color: #1a1a1a !important;
+    }
+    
+    [role="option"]:hover {
+        background-color: #f0f0f0 !important;
+        color: #1a1a1a !important;
+    }
+    
+    /* BaseWeb select styling */
+    [data-baseweb="select"] {
+        background-color: #ffffff !important;
+    }
+    
+    [data-baseweb="select"] input {
+        background-color: #ffffff !important;
+        color: #1a1a1a !important;
+    }
+    
+    .admin-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #FF6B6B !important;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white !important;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        text-align: center;
+    }
+    
+    .performance-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    [data-testid="metric-container"] {
+        background: white !important;
+        border-radius: 0.75rem;
+        padding: 1.5rem !important;
+        border: 2px solid #e0e0e0 !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="admin-title">⚙️ Admin Control Panel</div>', unsafe_allow_html=True)
+st.markdown("Monitor system health, retrain the ML model, and review rescue history.", unsafe_allow_html=True)
 
 # --------------------------------------------------
 # SECTION 1: MODEL PERFORMANCE
 # --------------------------------------------------
-st.subheader("📊 Model Performance Metrics")
+st.markdown("### 📊 Model Performance Metrics")
 
-col_perf1, col_perf2, col_perf3 = st.columns(3)
+perf_col1, perf_col2, perf_col3 = st.columns(3, gap="large")
 
-with col_perf1:
+with perf_col1:
+    accuracy_pct = f"{st.session_state.model_accuracy * 100:.1f}%"
+    status = "✅ Trained" if st.session_state.model_accuracy > 0 else "⏳ Untrained"
     st.metric(
-        "Acceptance Accuracy",
-        f"{st.session_state.model_accuracy * 100:.1f}%",
-        delta="Model trained" if st.session_state.model_accuracy > 0 else "Not trained yet"
+        label="🎯 Acceptance Accuracy",
+        value=accuracy_pct,
+        delta=status,
+        delta_color="off"
     )
 
-with col_perf2:
+with perf_col2:
     avg_response = (
         st.session_state.history_df["avg_response_time"].mean()
         if len(st.session_state.history_df) > 0
         else 0
     )
+    response_text = f"{avg_response:.1f} min" if avg_response > 0 else "-"
     st.metric(
-        "Avg Response Time (Predicted)",
-        f"{avg_response:.1f} min" if avg_response > 0 else "-"
+        label="⏱️ Avg Response Time",
+        value=response_text,
+        help="Average response time from ranked NGOs"
     )
 
-with col_perf3:
+with perf_col3:
     total_records = len(st.session_state.history_df)
+    status_msg = "✅ Ready" if total_records >= 5 else f"⏳ {total_records}/5"
     st.metric(
-        "Interaction Records",
-        total_records,
-        delta=f"Training samples" if total_records >= 5 else "Need 5+ records"
+        label="📊 Training Samples",
+        value=total_records,
+        delta=status_msg,
+        delta_color="off"
     )
 
 # --------------------------------------------------
 # SECTION 2: MODEL RETRAINING
 # --------------------------------------------------
 st.divider()
-st.subheader("🔄 Retrain Model")
+st.markdown("### 🔄 Retrain ML Model")
 
-st.info(
-    "The model learns from provider feedback (Accept/Reject). "
-    "Once you have 5+ interaction records with both accepted and rejected cases, "
-    "click **Retrain** to improve ranking accuracy."
-)
-
-if st.button("🔄 Retrain Model Now", use_container_width=True, type="primary"):
-    if len(st.session_state.history_df) < 5:
-        st.error(f"❌ Need at least 5 interaction records. Currently: {len(st.session_state.history_df)}")
-    else:
-        with st.spinner("🔄 Training model..."):
-            success = train_model()
-        
-        if success:
-            st.success(
-                f"✅ Model retrained successfully!\n"
-                f"Accuracy: {st.session_state.model_accuracy * 100:.1f}%"
-            )
+with st.container(border=True):
+    st.markdown("**How it works:** The model learns from accept/reject feedback to improve NGO ranking accuracy.")
+    
+    st.markdown("""
+    - ✅ Requires **minimum 5** interaction records
+    - ✅ Needs **both** accepted and rejected cases
+    - ✅ Updates in real-time
+    """)
+    
+    col_train_info, col_train_button = st.columns([3, 1])
+    
+    with col_train_info:
+        if len(st.session_state.history_df) < 5:
+            st.warning(f"⏳ Need {5 - len(st.session_state.history_df)} more records to train")
         else:
-            st.warning("⚠️ Model training incomplete. Need both accepted and rejected cases.")
+            st.success(f"✅ Ready to train! ({len(st.session_state.history_df)} records)")
+    
+    with col_train_button:
+        if st.button("🔄 Train Now", use_container_width=True, type="primary"):
+            if len(st.session_state.history_df) < 5:
+                st.error(f"❌ Need at least 5 records. Currently: {len(st.session_state.history_df)}")
+            else:
+                with st.spinner("🔄 Training model on interaction data..."):
+                    success = train_model()
+                
+                if success:
+                    accuracy_pct = f"{st.session_state.model_accuracy * 100:.1f}%"
+                    st.success(f"✅ Model trained! Accuracy: {accuracy_pct}")
+                else:
+                    st.warning("⚠️ Training incomplete. Ensure there are both accepted and rejected cases.")
 
 # --------------------------------------------------
 # SECTION 3: INTERACTION HISTORY
 # --------------------------------------------------
 st.divider()
-st.subheader("📚 Interaction History")
+st.markdown("### 📚 Complete Interaction History")
 
 if len(st.session_state.history_df) == 0:
-    st.info("No interaction records yet. Complete rescues to populate this log.")
+    st.info("📭 No interactions yet. Complete rescues to populate logs.")
 else:
     history_display = st.session_state.history_df.copy()
-    history_display["accepted"] = history_display["accepted"].apply(
+    history_display.insert(0, "#", range(1, len(history_display) + 1))
+    
+    history_display["Status"] = history_display["accepted"].apply(
         lambda x: "✅ Accepted" if x == 1 else "❌ Rejected"
     )
-    history_display.columns = [
+    
+    # Rename and format columns for display
+    history_display_formatted = history_display[[
+        "#",
+        "distance",
+        "accept_rate",
+        "avg_response_time",
+        "Status"
+    ]].copy()
+    
+    history_display_formatted.columns = [
+        "#",
         "Distance (km)",
         "Accept Rate (%)",
-        "Avg Response (min)",
+        "Response Time (min)",
         "Outcome"
     ]
-    history_display["Distance (km)"] = history_display["Distance (km)"].apply(lambda x: f"{x:.2f}")
-    history_display["Accept Rate (%)"] = history_display["Accept Rate (%)"].apply(lambda x: f"{x*100:.0f}%")
     
-    st.dataframe(history_display, use_container_width=True)
+    history_display_formatted["Distance (km)"] = history_display_formatted["Distance (km)"].apply(
+        lambda x: f"{x:.2f}"
+    )
+    history_display_formatted["Accept Rate (%)"] = history_display_formatted["Accept Rate (%)"].apply(
+        lambda x: f"{int(x*100)}%"
+    )
+    
+    st.dataframe(history_display_formatted, use_container_width=True, hide_index=True)
+    
+    # Summary statistics
+    st.divider()
+    st.markdown("### 📈 Summary Statistics")
+    
+    accepted_count = (history_display["accepted"] == 1).sum()
+    rejected_count = (history_display["accepted"] == 0).sum()
+    
+    summary_col1, summary_col2, summary_col3 = st.columns(3)
+    
+    summary_col1.metric("✅ Accepted", accepted_count)
+    summary_col2.metric("❌ Rejected", rejected_count)
+    summary_col3.metric("📊 Success Rate", f"{(accepted_count / len(history_display) * 100):.1f}%")
     
     col_exp1, col_exp2 = st.columns(2)
     

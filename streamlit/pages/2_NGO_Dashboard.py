@@ -11,17 +11,114 @@ from core import init_session_state, compute_reliability_score, log_rescue_compl
 st.set_page_config(page_title="NGO Dashboard", layout="wide")
 init_session_state()
 
-st.title("🚚 NGO Ranking & Reliability")
-st.caption("View top-ranked NGOs and update rescue status.")
+# Custom CSS
+st.markdown("""
+<style>
+    /* Overall page background */
+    .stApp {
+        background-color: #f8f9fa !important;
+        color: #1a1a1a !important;
+    }
+    
+    [data-testid="stAppViewContainer"] {
+        background-color: #f8f9fa !important;
+    }
+    
+    [data-testid="stSidebar"] {
+        background-color: #ffffff !important;
+    }
+    
+    /* Ensure all text is visible */
+    body, h1, h2, h3, h4, h5, h6, p, span, label, div {
+        color: #1a1a1a !important;
+    }
+    
+    /* Input field styling */
+    input, textarea, select {
+        background-color: #ffffff !important;
+        color: #1a1a1a !important;
+        border: 2px solid #d0d0d0 !important;
+        border-radius: 0.5rem !important;
+    }
+    
+    input::placeholder {
+        color: #999 !important;
+    }
+    
+    /* Selectbox and other inputs */
+    [data-testid="stSelectbox"] input,
+    [data-testid="stNumberInput"] input,
+    [data-testid="stTextInput"] input,
+    [data-testid="stTimeInput"] input {
+        background-color: #ffffff !important;
+        color: #1a1a1a !important;
+        border: 2px solid #d0d0d0 !important;
+    }
+    
+    /* Dropdown menu and options */
+    [data-testid="stPopover"],
+    [role="listbox"],
+    [role="option"] {
+        background-color: #ffffff !important;
+        color: #1a1a1a !important;
+    }
+    
+    [role="option"]:hover {
+        background-color: #f0f0f0 !important;
+        color: #1a1a1a !important;
+    }
+    
+    /* BaseWeb select styling */
+    [data-baseweb="select"] {
+        background-color: #ffffff !important;
+    }
+    
+    [data-baseweb="select"] input {
+        background-color: #ffffff !important;
+        color: #1a1a1a !important;
+    }
+    
+    .ngo-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #4ECDC4 !important;
+        margin-bottom: 0.5rem;
+    }
+    
+    .top-ngo-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white !important;
+        padding: 2rem;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .status-button {
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        margin: 0.5rem 0;
+    }
+    
+    [data-testid="metric-container"] {
+        background: white !important;
+        border-radius: 0.75rem;
+        padding: 1.5rem !important;
+        border: 2px solid #e0e0e0 !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="ngo-title">🚚 NGO Ranking & Status</div>', unsafe_allow_html=True)
+st.markdown("View ranked NGOs and update rescue status in real-time.", unsafe_allow_html=True)
 
 # --------------------------------------------------
 # CHECK IF TOP3 IS AVAILABLE
 # --------------------------------------------------
 if st.session_state.top3 is None:
-    st.warning(
-        "⚠️ No NGOs ranked yet.\n\n"
-        "👉 Go to **Food Provider Dashboard** to submit food details and find NGOs."
-    )
+    st.info("📍 No ranked NGOs yet. Go to **Food Provider Dashboard** to submit food and find NGOs.")
 else:
     # Get available NGOs (excluding rejected ones)
     available_ngos = st.session_state.top3[
@@ -30,61 +127,64 @@ else:
     
     if len(available_ngos) == 0:
         # Auto-fetch next top 3 when all are rejected
-        st.warning("⚠️ All top 3 NGOs have been rejected. Fetching next ranked NGOs...")
+        st.warning("⚠️ All top 3 NGOs rejected. Looking for more options...")
         
         if st.session_state.provider_lat is not None and st.session_state.provider_lon is not None:
-            with st.spinner("🔄 Ranking next set of NGOs..."):
-                # Get all NGOs ranked
+            with st.spinner("🔄 Finding next set of NGOs..."):
                 all_ranked = rank_ngos(
                     st.session_state.provider_lat,
                     st.session_state.provider_lon
                 )
-                # Skip rejected ones and get next 3
                 remaining_ngos = all_ranked[
                     ~all_ranked["ngo_id"].isin(st.session_state.rejected_ngo_ids)
                 ]
                 
                 if len(remaining_ngos) > 0:
                     st.session_state.top3 = remaining_ngos.head(3)
-                    st.success("✅ Fetched next ranked NGOs!")
+                    st.success("✅ Found next batch of NGOs!")
                     st.rerun()
                 else:
-                    st.error("❌ No more NGOs available. All have been rejected.")
+                    st.error("❌ No more NGOs available.")
         else:
-            st.info("👉 Go to **Food Provider Dashboard** to submit food details and find NGOs.")
+            st.info("👉 Go to **Food Provider Dashboard** first.")
     else:
         # --------------------------------------------------
         # DISPLAY TOP RANKED NGO (HIGHLIGHTED)
         # --------------------------------------------------
-        st.subheader("🥇 Top Ranked NGO")
+        st.markdown("### 🥇 Top Recommended NGO")
         
         top_ngo = available_ngos.iloc[0]
         reliability = compute_reliability_score(top_ngo)
         
         with st.container(border=True):
-            col_top_left, col_top_right = st.columns([2, 1])
+            col_top_left, col_top_right = st.columns([3, 1])
             
             with col_top_left:
-                st.markdown(f"### {top_ngo['ngo_name']}")
                 prob_percent = round(top_ngo['predicted_probability'] * 100, 1)
-                st.markdown(f"**Predicted Acceptance Probability:** {prob_percent}%")
+                st.markdown(f"## {top_ngo['ngo_name']}")
+                st.markdown(f"**📊 Predicted Acceptance:** {prob_percent}% chance of accepting")
             
             with col_top_right:
-                st.metric("Reliability Score", f"{reliability}/100")
+                reliability_color = "🟢" if reliability > 75 else "🟡" if reliability > 50 else "🔴"
+                st.metric(f"{reliability_color} Reliability", f"{reliability}/100")
             
-            col_t1, col_t2, col_t3, col_t4 = st.columns(4)
-            col_t1.metric("Distance", f"{round(top_ngo['distance'], 2)} km")
-            col_t2.metric("Accept Rate", f"{int(top_ngo['accept_rate']*100)}%")
-            col_t3.metric("Avg Response", f"{top_ngo['avg_response_time']} min")
-            col_t4.metric("NGO ID", f"#{top_ngo['ngo_id']}")
+            st.divider()
+            
+            metric_cols = st.columns(4, gap="large")
+            metric_cols[0].metric("📍 Distance", f"{round(top_ngo['distance'], 2)} km")
+            metric_cols[1].metric("✅ Acceptance", f"{int(top_ngo['accept_rate']*100)}%")
+            metric_cols[2].metric("⏱️ Avg Response", f"{top_ngo['avg_response_time']} min")
+            metric_cols[3].metric("🏢 NGO ID", f"#{top_ngo['ngo_id']}")
+            
+            st.divider()
             
             # Status buttons for top NGO
-            st.markdown("#### 📊 Update Status")
-            col_btn1, col_btn2, col_btn3, col_btn4 = st.columns(4)
+            st.markdown("#### 📊 Update Rescue Status")
             
-            with col_btn1:
-                if st.button("✅ Accept", key=f"accept_{top_ngo['ngo_id']}", use_container_width=True):
-                    # Check if this NGO was already accepted in current session
+            status_cols = st.columns(4, gap="small")
+            
+            with status_cols[0]:
+                if st.button("✅ Accepted", key=f"accept_{top_ngo['ngo_id']}", use_container_width=True, type="primary"):
                     is_duplicate = any(
                         (st.session_state.history_df["accept_rate"] == top_ngo["accept_rate"]) &
                         (st.session_state.history_df["distance"] == top_ngo["distance"]) &
@@ -92,9 +192,8 @@ else:
                     )
                     
                     if is_duplicate:
-                        st.warning(f"⚠️ {top_ngo['ngo_name']} already accepted! No duplicate entry added.")
+                        st.warning(f"⚠️ Already logged!")
                     else:
-                        # Log acceptance to history for model training
                         new_row = pd.DataFrame([{
                             "distance": top_ngo["distance"],
                             "accept_rate": top_ngo["accept_rate"],
@@ -107,22 +206,21 @@ else:
                         )
                         train_model()
                         st.session_state.ngo_status[top_ngo['ngo_id']] = "accepted"
-                        st.success(f"✅ {top_ngo['ngo_name']} accepted the rescue! Model updated.")
+                        st.success(f"✅ Logged! Model updated.")
                         st.rerun()
             
-            with col_btn2:
-                if st.button("🚗 On the Way", key=f"onway_{top_ngo['ngo_id']}", use_container_width=True):
+            with status_cols[1]:
+                if st.button("🚗 On Way", key=f"onway_{top_ngo['ngo_id']}", use_container_width=True):
                     st.session_state.ngo_status[top_ngo['ngo_id']] = "on_the_way"
-                    st.info(f"🚗 {top_ngo['ngo_name']} is on the way.")
+                    st.info(f"🚗 {top_ngo['ngo_name']} is en route")
             
-            with col_btn3:
+            with status_cols[2]:
                 if st.button("📦 Picked Up", key=f"pickup_{top_ngo['ngo_id']}", use_container_width=True):
                     st.session_state.ngo_status[top_ngo['ngo_id']] = "picked_up"
-                    st.info(f"📦 Food picked up by {top_ngo['ngo_name']}!")
+                    st.info(f"📦 Food collected!")
             
-            with col_btn4:
+            with status_cols[3]:
                 if st.button("✨ Completed", key=f"complete_{top_ngo['ngo_id']}", use_container_width=True):
-                    # Check if this NGO was already marked completed in current session
                     is_duplicate = any(
                         (st.session_state.history_df["accept_rate"] == top_ngo["accept_rate"]) &
                         (st.session_state.history_df["distance"] == top_ngo["distance"]) &
@@ -130,7 +228,7 @@ else:
                     )
                     
                     if is_duplicate:
-                        st.warning(f"⚠️ {top_ngo['ngo_name']} already logged as completed!")
+                        st.warning(f"⚠️ Already logged!")
                     else:
                         new_row = pd.DataFrame([{
                             "distance": top_ngo["distance"],
@@ -149,16 +247,14 @@ else:
                             st.session_state.food_details.get("num_meals", 0)
                         )
                         st.session_state.ngo_status[top_ngo['ngo_id']] = "completed"
-                        st.success(
-                            f"✨ Rescue completed by {top_ngo['ngo_name']}! "
-                            f"Model updated with feedback."
-                        )
+                        st.success(f"✨ Rescue completed & logged!")
                         st.rerun()
         
         # --------------------------------------------------
         # OTHER RANKED NGOs (RANKED TABLE)
         # --------------------------------------------------
-        st.subheader("📊 All Ranked NGOs")
+        st.divider()
+        st.markdown("### 📊 All Ranked NGOs")
         
         display_df = available_ngos.copy()
         display_df["reliability"] = display_df.apply(compute_reliability_score, axis=1)
@@ -179,63 +275,62 @@ else:
         display_df_short.columns = [
             "NGO Name",
             "Distance (km)",
-            "Accept Rate (%)",
+            "Acceptance (%)",
             "Avg Response (min)",
-            "Reliability /100",
+            "Reliability",
             "Status"
         ]
-        display_df_short["Accept Rate (%)"] = display_df_short["Accept Rate (%)"].apply(lambda x: f"{int(x*100)}%")
+        display_df_short["Acceptance (%)"] = display_df_short["Acceptance (%)"].apply(lambda x: f"{int(x*100)}%")
         display_df_short["Distance (km)"] = display_df_short["Distance (km)"].apply(lambda x: f"{round(x, 2)}")
         
-        st.dataframe(display_df_short, use_container_width=True)
+        st.dataframe(display_df_short, use_container_width=True, hide_index=True)
         
         # --------------------------------------------------
         # FOOD DETAILS RECAP
         # --------------------------------------------------
         st.divider()
-        st.subheader("📋 Food Details (From Provider)")
+        st.markdown("### 📋 Food Details Summary")
         
-        col_food1, col_food2, col_food3 = st.columns(3)
-        col_food1.metric("Food Type", st.session_state.food_details.get("food_type", "-"))
-        col_food2.metric("Number of Meals", st.session_state.food_details.get("num_meals", "-"))
-        col_food3.metric("Event Type", st.session_state.food_details.get("event_type", "-"))
-        
-        st.caption(f"Cause: {st.session_state.food_details.get('cause_tag', '-')}")
+        recap_cols = st.columns(4)
+        recap_cols[0].metric("🍱 Food Type", st.session_state.food_details.get("food_type", "-"))
+        recap_cols[1].metric("🍽️ Quantity", st.session_state.food_details.get("num_meals", "-"))
+        recap_cols[2].metric("🎪 Event", st.session_state.food_details.get("event_type", "-"))
+        recap_cols[3].metric("💡 Reason", st.session_state.food_details.get("cause_tag", "-"))
         
         # --------------------------------------------------
         # FEEDBACK: ACCEPT / REJECT
         # --------------------------------------------------
         st.divider()
-        st.subheader("📝 Quick Feedback (Reject Rescue)")
+        st.markdown("### 🔄 Try Another NGO")
         
-        st.caption(
-            "If an NGO is unavailable or you want to try the next option, "
-            "reject to skip this NGO and show the next ranked one."
-        )
+        st.caption("If an NGO is unavailable, reject to skip and show the next option.")
         
-        reject_ngo_name = st.selectbox(
-            "Select NGO to reject:",
-            available_ngos["ngo_name"].tolist()
-        )
+        reject_col1, reject_col2 = st.columns([2, 1])
         
-        if st.button("❌ Reject This NGO & Show Next", use_container_width=True, type="secondary"):
-            reject_ngo = available_ngos[available_ngos["ngo_name"] == reject_ngo_name].iloc[0]
-            
-            # Add to rejected list
-            st.session_state.rejected_ngo_ids.append(reject_ngo["ngo_id"])
-            
-            # Log rejection feedback
-            new_row = pd.DataFrame([{
-                "distance": reject_ngo["distance"],
-                "accept_rate": reject_ngo["accept_rate"],
-                "avg_response_time": reject_ngo["avg_response_time"],
-                "accepted": 0
-            }])
-            st.session_state.history_df = pd.concat(
-                [st.session_state.history_df, new_row],
-                ignore_index=True
+        with reject_col1:
+            reject_ngo_name = st.selectbox(
+                "Select NGO to skip:",
+                available_ngos["ngo_name"].tolist(),
+                label_visibility="collapsed"
             )
-            train_model()
-            
-            st.success(f"❌ {reject_ngo_name} rejected. Showing next ranked NGO...")
-            st.rerun()
+        
+        with reject_col2:
+            if st.button("❌ Skip This NGO", use_container_width=True):
+                reject_ngo = available_ngos[available_ngos["ngo_name"] == reject_ngo_name].iloc[0]
+                
+                st.session_state.rejected_ngo_ids.append(reject_ngo["ngo_id"])
+                
+                new_row = pd.DataFrame([{
+                    "distance": reject_ngo["distance"],
+                    "accept_rate": reject_ngo["accept_rate"],
+                    "avg_response_time": reject_ngo["avg_response_time"],
+                    "accepted": 0
+                }])
+                st.session_state.history_df = pd.concat(
+                    [st.session_state.history_df, new_row],
+                    ignore_index=True
+                )
+                train_model()
+                
+                st.success(f"⏭️ Skipped {reject_ngo_name}!")
+                st.rerun()
