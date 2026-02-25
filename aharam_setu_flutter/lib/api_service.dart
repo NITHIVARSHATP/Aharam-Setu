@@ -10,8 +10,12 @@ class ApiService {
   : _baseUrl = baseUrl ?? _defaultBaseUrl();
 
   final String _baseUrl;
+  static const String _envBaseUrl = String.fromEnvironment('BASE_URL');
 
   static String _defaultBaseUrl() {
+    if (_envBaseUrl.isNotEmpty) {
+      return _envBaseUrl;
+    }
     if (kIsWeb) {
       return 'http://127.0.0.1:8000';
     }
